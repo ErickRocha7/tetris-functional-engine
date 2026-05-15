@@ -16,7 +16,7 @@
     </properties>
 
     <dependencies>
-        <!-- JavaFX para a Interface Gráfica -->
+        <!-- Gráficos e Controles do JavaFX -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -28,4 +28,19 @@
             <version>${javafx.version}</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Plugin Oficial do JavaFX para Mapeamento de Prefixos -->
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+                <configuration>
+                    <!-- Aponta para o ponto de entrada correto da infraestrutura -->
+                    <mainClass>com.tetris.infrastructure.ui.MainApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

@@ -5,7 +5,7 @@ import com.tetris.domain.GameReducer;
 import com.tetris.domain.GameState;
 
 import java.util.List;
-import java.util.CopyOnWriteArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
