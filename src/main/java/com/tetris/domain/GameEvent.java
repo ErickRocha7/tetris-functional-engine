@@ -13,6 +13,10 @@ public sealed interface GameEvent {
     record MoveRight() implements GameEvent {
     }
 
+    // Comando de movimentação para baixo (soft drop) – separado do clock da engine
+    record MoveDown() implements GameEvent {
+    }
+
     // Comando de rotação da peça ativa iniciado pelo jogador
     record Rotate() implements GameEvent {
     }

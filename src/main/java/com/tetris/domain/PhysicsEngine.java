@@ -1,14 +1,9 @@
 package com.tetris.domain;
 
-/**
- * Motor físico puramente preditivo e sem estado (stateless).
- * Simula transformações espaciais antes de aplicá-las ao domínio.
- */
 public final class PhysicsEngine {
 
     /**
-     * Tenta deslocar a peça lateral ou verticalmente. Se a projeção for válida,
-     * retorna a nova configuração, caso contrário retorna a peça original.
+     * Tenta deslocar a peça.
      */
     public static Tetromino tryMove(Board board, Tetromino current, int deltaRow, int deltaCol) {
         Tetromino projected = current.move(deltaRow, deltaCol);
@@ -16,26 +11,34 @@ public final class PhysicsEngine {
     }
 
     /**
-     * Tenta rotacionar a peça aplicando uma lógica simplificada de Wall Kick.
+     * Tenta rotacionar a peça aplicando uma lógica de Wall Kick simplificada.
+     * Testa a rotação pura e, se falhar, tenta pequenos deslocamentos.
+     * Esta abordagem resolve a maioria dos casos de rotação colada em paredes ou
+     * outras peças.
      */
     public static Tetromino tryRotate(Board board, Tetromino current) {
         Tetromino rotated = current.rotate();
 
-        // 1. Teste de rotação pura
-        if (board.isValidPosition(rotated))
-            return rotated;
+        // Lista de deslocamentos (deltaRow, deltaCol) a serem testados após a rotação
+        int[][] kicks = {
+                { 0, 0 }, // rotação pura
+                { 0, -1 }, // chutar esquerda
+                { 0, 1 }, // chutar direita
+                { -1, 0 }, // chutar para cima (útil em colisão com peças abaixo)
+                { 1, 0 } // chutar para baixo (raro, mas ajuda em bordas)
+        };
 
-        // 2. Wall Kick: Tenta chutar 1 bloco para a esquerda
-        Tetromino kickLeft = rotated.move(0, -1);
-        if (board.isValidPosition(kickLeft))
-            return kickLeft;
+        for (int[] kick : kicks) {
+            Tetromino kicked = new Tetromino(
+                    rotated.shape(),
+                    rotated.position().add(kick[0], kick[1]),
+                    rotated.orientation());
+            if (board.isValidPosition(kicked)) {
+                return kicked;
+            }
+        }
 
-        // 3. Wall Kick: Tenta chutar 1 bloco para a direita
-        Tetromino kickRight = rotated.move(0, 1);
-        if (board.isValidPosition(kickRight))
-            return kickRight;
-
-        // Se todas as projeções falharem, a rotação é fisicamente obstruída
+        // Se nenhum kick funcionar, a rotação é impossível
         return current;
     }
 }

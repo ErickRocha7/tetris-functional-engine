@@ -9,6 +9,10 @@ import java.util.Optional;
  * Tradutor de infraestrutura (Input Shell).
  * Mapeia e converte estímulos de hardware do JavaFX em intenções abstratas do
  * domínio.
+ * 
+ * Agora com separação clara:
+ * - MoveDown → input do jogador (soft drop)
+ * - TimeTick → emitido exclusivamente pelo GameScheduler (gravidade)
  */
 public final class InputMapper {
 
@@ -26,9 +30,9 @@ public final class InputMapper {
             case LEFT, A -> new GameEvent.MoveLeft();
             case RIGHT, D -> new GameEvent.MoveRight();
             case UP, W -> new GameEvent.Rotate();
-            case DOWN, S -> new GameEvent.TimeTick();
+            case DOWN, S -> new GameEvent.MoveDown(); // ✅ corrigido: soft drop
             case SPACE -> new GameEvent.HardDrop();
-            default -> null; // Ignora qualquer outra tecla não mapeada pelas regras
+            default -> null;
         };
 
         return Optional.ofNullable(mappedEvent);
