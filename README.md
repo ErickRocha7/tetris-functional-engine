@@ -14,12 +14,12 @@ O **Functional Tetris Engine** não foi desenvolvido como um simples clone de Te
 
 Este projeto funciona estritamente como um ambiente de experimentação de padrões de alta confiabilidade frequentemente encontrados em **trading engines financeiras**, **motores de simulação** e **sistemas distribuídos de baixa latência**:
 
-- 🧩 **Arquitetura Funcional:** Separação total entre lógica combinatória pura e efeitos colaterais de infraestrutura.
-- ⏱️ **Simulação Determinística:** Capacidade de reproduzir exatamente qualquer execução a partir de uma linha temporal de eventos.
-- 🔒 **Imutabilidade Estrita:** Eliminação de mutação compartilhada, tratando o estado como uma sequência imutável de snapshots.
-- 📨 **Event Sourcing & Reducers:** Estado da aplicação derivado exclusivamente da redução de uma fila ordenada de comandos.
-- ⚡ **Renderização Incremental:** Otimização de UI baseada no cálculo computacional de diferenças de matrizes.
-- 📊 **Runtimes Auditáveis:** Extração de telemetria precisa e trilhas de execução para depuração sem efeitos colaterais.
+- **Arquitetura Funcional:** Separação total entre lógica combinatória pura e efeitos colaterais de infraestrutura.
+- **Simulação Determinística:** Capacidade de reproduzir exatamente qualquer execução a partir de uma linha temporal de eventos.
+- **Imutabilidade Estrita:** Eliminação de mutação compartilhada, tratando o estado como uma sequência imutável de snapshots.
+- **Event Sourcing & Reducers:** Estado da aplicação derivado exclusivamente da redução de uma fila ordenada de comandos.
+- **Renderização Incremental:** Otimização de UI baseada no cálculo computacional de diferenças de matrizes.
+- **Runtimes Auditáveis:** Extração de telemetria precisa e trilhas de execução para depuração sem efeitos colaterais.
 
 ---
 
@@ -225,7 +225,7 @@ graph TD
 ## 👤 Autor
 
 **Erick Rocha**  
-*Engenheiro de Software focado em sistemas robustos, concorrência e arquitetura moderna.*
+*Coordenador de Operações Bancárias, com foco em escla e eficiência operacional, transformação e automação de processos críticos. Atua no Mercado Financeiro há 14 anos.*
 
 [![LinkedIn](https://shields.io)](https://www.linkedin.com/in/erickdelimarocha/) 
 [![GitHub](https://shields.io)](https://github.com/ErickRocha7)
