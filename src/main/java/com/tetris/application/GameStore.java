@@ -5,8 +5,8 @@ import com.tetris.domain.GameReducer;
 import com.tetris.domain.GameState;
 
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -15,104 +15,175 @@ import java.util.function.Consumer;
 
 /**
  * A Store central atua como a fonte única da verdade da aplicação.
- * Encapsula o estado, a fila sequencial de processamento e a infraestrutura
- * concorrente.
+ * Encapsula o estado, a fila sequencial de processamento
+ * e a infraestrutura concorrente.
  */
 public final class GameStore implements AutoCloseable {
 
     private final BlockingQueue<GameEvent> eventQueue;
+
     private final ExecutorService engineExecutor;
+
     private final AtomicReference<GameState> stateHolder;
+
     private final List<Consumer<GameState>> listeners;
+
+    /**
+     * Interceptador determinístico de eventos
+     * responsável por registrar a trilha temporal da partida.
+     */
+    private final EventInterceptor interceptor;
+
     private volatile boolean running;
 
     public GameStore(GameState initialState) {
+
         this.eventQueue = new LinkedBlockingQueue<>();
+
         this.listeners = new CopyOnWriteArrayList<>();
+
         this.stateHolder = new AtomicReference<>(initialState);
+
+        // Inicializa o interceptador com a seed da partida
+        this.interceptor = new EventInterceptor(initialState.seed());
+
         this.running = true;
 
-        // Estabelece o Thread Confinement: apenas esta thread pode invocar o reducer
+        /**
+         * Thread confinement:
+         * apenas esta thread executa o reducer.
+         */
         this.engineExecutor = Executors.newSingleThreadExecutor(runnable -> {
+
             Thread thread = new Thread(runnable, "tetris-engine-thread");
+
             thread.setDaemon(true);
+
             return thread;
         });
 
-        // Inicializa o laço de eventos assíncrono e linear
+        // Inicializa o Event Loop linearizado
         this.engineExecutor.submit(this::runEventLoop);
     }
 
     /**
-     * Canal central e thread-safe para publicação de intenções (Eventos) do jogo.
+     * Canal central thread-safe de publicação de eventos.
      */
     public void dispatch(GameEvent event) {
+
         if (running && event != null) {
+
             eventQueue.offer(event);
         }
     }
 
     /**
-     * Permite que componentes assíncronos (como a UI) assinem o fluxo de novos
-     * snapshots.
+     * Permite inscrição reativa no fluxo de snapshots.
      */
     public void subscribe(Consumer<GameState> listener) {
+
         if (listener != null) {
+
             this.listeners.add(listener);
-            // Envia o snapshot atual imediatamente no momento da inscrição
+
+            // Publica imediatamente o snapshot atual
             listener.accept(stateHolder.get());
         }
     }
 
     /**
-     * Permite a leitura não-bloqueante e atômica do snapshot de estado mais
-     * recente.
+     * Leitura atômica do snapshot atual.
      */
     public GameState getCurrentSnapshot() {
+
         return stateHolder.get();
     }
 
     /**
-     * O Event Loop linearizado que consome a fila e executa as transições.
+     * Event Loop centralizado da engine.
      */
     private void runEventLoop() {
+
         while (running && !Thread.currentThread().isInterrupted()) {
+
             try {
-                // Bloqueio eficiente: aguarda um evento sem consumir CPU (evita busy waiting)
+
+                /**
+                 * Bloqueio eficiente:
+                 * aguarda eventos sem busy waiting.
+                 */
                 GameEvent event = eventQueue.take();
 
-                GameState currentState = stateHolder.get();
-                GameState nextState = GameReducer.reduce(currentState, event);
+                // =====================================================
+                // Interceptação determinística do evento
+                // =====================================================
 
-                // Publicação atômica se houve transição real de dados
+                this.interceptor.intercept(event);
+
+                GameState currentState = stateHolder.get();
+
+                // =====================================================
+                // Redução funcional do estado
+                // =====================================================
+
+                GameState nextState = GameReducer.reduce(
+                        currentState,
+                        event);
+
+                // =====================================================
+                // Publicação atômica do novo snapshot
+                // =====================================================
+
                 if (nextState != currentState) {
+
                     stateHolder.set(nextState);
+
                     notifyListeners(nextState);
                 }
+
             } catch (InterruptedException e) {
+
                 Thread.currentThread().interrupt();
+
                 break;
             }
         }
     }
 
     /**
-     * Propaga o novo snapshot isolando falhas lançadas por listeners periféricos.
+     * Propaga snapshots para listeners externos
+     * isolando falhas periféricas.
      */
     private void notifyListeners(GameState state) {
+
         for (Consumer<GameState> listener : listeners) {
+
             try {
+
                 listener.accept(state);
+
             } catch (Exception e) {
-                // Impede que erros visuais de renderização derrubem o loop da engine
-                System.err.println("Erro isolado no StateListener: " + e.getMessage());
+
+                /**
+                 * Isolamento de falha:
+                 * erros periféricos não derrubam a engine.
+                 */
+                System.err.println(
+                        "Erro isolado no StateListener: "
+                                + e.getMessage());
             }
         }
     }
 
     @Override
     public void close() {
+
         this.running = false;
+
         this.engineExecutor.shutdownNow();
+
+        // Salva automaticamente a trilha temporal da partida
+        this.interceptor.persist(
+                "ultima_partida.replay.txt");
     }
 }
