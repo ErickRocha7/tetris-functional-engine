@@ -5,6 +5,7 @@ import com.tetris.application.GameScheduler;
 import com.tetris.application.GameStore;
 import com.tetris.application.ReplayPlayer;
 import com.tetris.application.ReplaySession;
+import com.tetris.application.MetricsAnalyzer;
 
 import com.tetris.domain.DeterministicGenerator;
 import com.tetris.domain.GameState;
@@ -28,7 +29,6 @@ import java.util.List;
 public final class MainApplication extends Application {
 
     private GameStore store;
-
     private GameScheduler scheduler;
 
     @Override
@@ -39,41 +39,26 @@ public final class MainApplication extends Application {
         // =========================================================
 
         Canvas canvas = new Canvas(300, 600);
-
         StackPane root = new StackPane(canvas);
-
         Scene scene = new Scene(root);
 
-        // =========================================================
-        // Renderer incremental reativo
-        // =========================================================
-
         TetrisIncrementalRenderer renderer = new TetrisIncrementalRenderer(canvas);
-
-        // =========================================================
-        // Tentativa de inicialização em modo Replay
-        // =========================================================
 
         boolean replayMode = false;
 
         try {
-
             File replayFile = new File("ultima_partida.replay.txt");
 
             // =====================================================
             // MODO CINEMA / REPLAY DETERMINÍSTICO
             // =====================================================
-
             if (replayFile.exists()) {
 
                 ReplaySession session = EventInterceptor.load(
                         "ultima_partida.replay.txt");
 
-                // Reconstrói deterministicamente o mesmo pipeline
-                // inicial da sessão original
-
-                DeterministicGenerator.GeneratorResult firstBag = DeterministicGenerator.generateBag(
-                        session.initialSeed());
+                DeterministicGenerator.GeneratorResult firstBag = DeterministicGenerator
+                        .generateBag(session.initialSeed());
 
                 List<Tetromino.Shape> queue = new ArrayList<>(firstBag.bag());
 
@@ -89,28 +74,18 @@ public final class MainApplication extends Application {
                         firstPiece,
                         firstBag.nextSeed());
 
-                // Inicializa Store em modo replay
                 this.store = new GameStore(replayInitialState);
 
-                // =================================================
-                // Player automatizado de replay
-                // =================================================
-
                 ReplayPlayer player = new ReplayPlayer(store);
-
                 player.play("ultima_partida.replay.txt");
 
                 replayMode = true;
 
-                System.out.println(
-                        "Engine rodando em modo REPLAY DETERMINÍSTICO.");
+                System.out.println("Engine rodando em modo REPLAY DETERMINÍSTICO.");
             }
 
         } catch (Exception e) {
-
-            System.err.println(
-                    "Falha ao inicializar replay: "
-                            + e.getMessage());
+            System.err.println("Falha ao inicializar replay: " + e.getMessage());
         }
 
         // =========================================================
@@ -119,25 +94,16 @@ public final class MainApplication extends Application {
 
         if (!replayMode) {
 
-            // =====================================================
-            // Inicialização determinística do pipeline 7-Bag
-            // =====================================================
-
             long initialSeed = 42L;
 
-            DeterministicGenerator.GeneratorResult firstBag = DeterministicGenerator.generateBag(
-                    initialSeed);
+            DeterministicGenerator.GeneratorResult firstBag = DeterministicGenerator.generateBag(initialSeed);
 
-            DeterministicGenerator.GeneratorResult secondBag = DeterministicGenerator.generateBag(
-                    firstBag.nextSeed());
+            DeterministicGenerator.GeneratorResult secondBag = DeterministicGenerator.generateBag(firstBag.nextSeed());
 
             List<Tetromino.Shape> initialQueue = new ArrayList<>();
-
             initialQueue.addAll(firstBag.bag());
-
             initialQueue.addAll(secondBag.bag());
 
-            // Primeira peça ativa
             Tetromino.Shape firstShape = initialQueue.remove(0);
 
             Tetromino firstPiece = new Tetromino(
@@ -145,58 +111,33 @@ public final class MainApplication extends Application {
                     new MatrixPosition(0, 4),
                     Tetromino.Orientation.NORTH);
 
-            // Snapshot inicial imutável
             GameState initialState = GameState.createInitial(
                     List.copyOf(initialQueue),
                     firstPiece,
                     secondBag.nextSeed());
 
-            // Store central
             this.store = new GameStore(initialState);
-
-            // Scheduler temporal real
             this.scheduler = new GameScheduler(store);
 
-            // Input físico habilitado apenas no modo normal
-            scene.setOnKeyPressed(keyEvent -> {
+            scene.setOnKeyPressed(keyEvent -> InputMapper.map(keyEvent).ifPresent(store::dispatch));
 
-                InputMapper
-                        .map(keyEvent)
-                        .ifPresent(store::dispatch);
-            });
-
-            // Dispara o loop temporal
             this.scheduler.start();
         }
 
         // =========================================================
-        // Inscrição reativa da UI
+        // UI subscription
         // =========================================================
 
-        store.subscribe(state -> {
-
-            Platform.runLater(() -> renderer.render(state));
-        });
-
-        // =========================================================
-        // Inicialização da janela
-        // =========================================================
+        store.subscribe(state -> Platform.runLater(() -> renderer.render(state)));
 
         primaryStage.setTitle("Functional Tetris Engine");
-
         primaryStage.setScene(scene);
-
         primaryStage.setResizable(false);
-
         primaryStage.show();
     }
 
     @Override
     public void stop() {
-
-        // =========================================================
-        // Encerramento seguro do ecossistema concorrente
-        // =========================================================
 
         if (scheduler != null) {
             scheduler.close();
@@ -205,10 +146,14 @@ public final class MainApplication extends Application {
         if (store != null) {
             store.close();
         }
+
+        // =========================================================
+        // Relatório pós-execução (telemetria / replay analytics)
+        // =========================================================
+        Platform.runLater(() -> MetricsAnalyzer.generateReport("ultima_partida.replay.txt"));
     }
 
     public static void main(String[] args) {
-
         launch(args);
     }
 }
