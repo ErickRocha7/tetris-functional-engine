@@ -15,14 +15,11 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import java.io.File;
 
-/**
- * Ponto de entrada e orquestrador de inicialização da infraestrutura da Engine.
- * Agora totalmente determinístico: o estado inicial é gerado apenas pela seed.
- */
 public final class MainApplication extends Application {
 
     private GameStore store;
     private GameScheduler scheduler;
+    private ReplayPlayer replayPlayer; // <-- campo para gerenciar o ciclo de vida
 
     @Override
     public void start(Stage primaryStage) {
@@ -32,7 +29,7 @@ public final class MainApplication extends Application {
         TetrisIncrementalRenderer renderer = new TetrisIncrementalRenderer(canvas);
 
         boolean replayMode = false;
-        long initialSeed = 42L; // seed padrão para novo jogo
+        long initialSeed = 42L;
 
         try {
             File replayFile = new File("ultima_partida.replay.txt");
@@ -46,21 +43,17 @@ public final class MainApplication extends Application {
             System.err.println("Falha ao carregar replay: " + e.getMessage());
         }
 
-        // Cria o estado inicial unicamente a partir da seed (o domínio gera todo o
-        // resto)
         GameState initialState = GameState.createInitial(initialSeed);
         this.store = new GameStore(initialState);
 
         if (!replayMode) {
-            // Modo normal: ativa inputs do jogador e o scheduler de tempo
             this.scheduler = new GameScheduler(store);
             scene.setOnKeyPressed(keyEvent -> InputMapper.map(keyEvent).ifPresent(store::dispatch));
             this.scheduler.start();
         } else {
-            // Modo replay: apenas injeta os eventos gravados (não precisa de scheduler)
             try {
-                ReplayPlayer player = new ReplayPlayer(store);
-                player.play("ultima_partida.replay.txt");
+                this.replayPlayer = new ReplayPlayer(store);
+                this.replayPlayer.play("ultima_partida.replay.txt");
             } catch (Exception e) {
                 System.err.println("Erro ao executar replay: " + e.getMessage());
             }
@@ -78,6 +71,8 @@ public final class MainApplication extends Application {
     public void stop() {
         if (scheduler != null)
             scheduler.close();
+        if (replayPlayer != null)
+            replayPlayer.close(); // <-- fecha o executor do replay
         if (store != null)
             store.close();
         Platform.runLater(() -> MetricsAnalyzer.generateReport("ultima_partida.replay.txt"));
